@@ -15,28 +15,39 @@ export const blogRouter = new Hono<{
 }>();
 
 blogRouter.use("/*", async (c, next) => {
-    const authHeader = c.req.header("authorization") || "";
+    const authHeader = c.req.header("Authorization") || "";
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    console.log("Authorization Header:", authHeader);
+    console.log("Extracted Token:", token);
+    console.log("JWT Secret:", c.env.JWT_SECRET);
+
     try {
-        const user = await verify(authHeader, c.env.JWT_SECRET);
+        const user = await verify(token, c.env.JWT_SECRET);
+        console.log("User after verification:", user);
+
         if (user) {
             c.set("userId", user.id);
             await next();
         } else {
             c.status(403);
             return c.json({
-                message: "You are not logged in"
-            })
+                message: "You are not logged in because the user was not found"
+            });
         }
-    } catch(e) {
+    } catch (e) {
+        console.error("JWT Verification Error:", e);
         c.status(403);
         return c.json({
-            message: "You are not logged in"
-        })
+            message: "You are not logged in because there was an error"
+        });
     }
 });
 
 blogRouter.post('/', async (c) => {
+    console.log("POST request received for creating a blog");
     const body = await c.req.json();
+    console.log("Request Body:", body);
     const { success } = createBlogInput.safeParse(body);
     if (!success) {
         c.status(411);
@@ -90,6 +101,7 @@ blogRouter.put('/', async (c) => {
     return c.json({
         id: blog.id
     })
+    
 })
 
 // Todo: add pagination
